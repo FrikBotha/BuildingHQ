@@ -74,4 +74,11 @@ export type CreateQuotationInput = {
   totalAmount: number;
   vatAmount?: number;
   notes?: string;
+  lineItems?: Array<{
+    description: string;
+    unit: string;
+    quantity: number;
+    unitRate: number;
+    amount: number;
+  }>;
 };

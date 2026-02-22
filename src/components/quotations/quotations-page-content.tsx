@@ -38,6 +38,7 @@ import {
   X,
   Upload,
   ArrowLeftRight,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Quotation, QuotationStatus, CreateQuotationInput } from "@/types/quotation";
@@ -45,6 +46,7 @@ import { QUOTATION_STATUS_LABELS } from "@/types/quotation";
 import { TRADE_CATEGORY_LABELS, type TradeCategory } from "@/types/common";
 import { formatZAR } from "@/lib/currency";
 import { formatDate } from "@/lib/dates";
+import { ExtractQuotationDialog } from "./extract-quotation-dialog";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -132,6 +134,10 @@ export function QuotationsPageContent({
   const [compareMode, setCompareMode] = useState(false);
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   const [compareOpen, setCompareOpen] = useState(false);
+
+  // --- Extraction dialog state ---
+  const [extractDialogOpen, setExtractDialogOpen] = useState(false);
+  const [extractForQuotationId, setExtractForQuotationId] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Filtered list
@@ -386,6 +392,17 @@ export function QuotationsPageContent({
               >
                 <ArrowLeftRight className="mr-2 h-4 w-4" />
                 Compare
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setExtractForQuotationId(null);
+                  setExtractDialogOpen(true);
+                }}
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                Import from Document
               </Button>
               <Button size="sm" onClick={openCreateDialog}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -887,31 +904,45 @@ export function QuotationsPageContent({
                     </ul>
                   )}
 
-                  <label className="inline-flex cursor-pointer items-center gap-2">
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleFileUpload(file, detailQuotation.id);
-                        }
-                        e.target.value = "";
-                      }}
-                      disabled={uploadingFile}
-                    />
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex cursor-pointer items-center gap-2">
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleFileUpload(file, detailQuotation.id);
+                          }
+                          e.target.value = "";
+                        }}
+                        disabled={uploadingFile}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadingFile}
+                        asChild
+                      >
+                        <span>
+                          <Upload className="mr-1 h-3.5 w-3.5" />
+                          {uploadingFile ? "Uploading..." : "Upload File"}
+                        </span>
+                      </Button>
+                    </label>
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={uploadingFile}
-                      asChild
+                      onClick={() => {
+                        setDetailOpen(false);
+                        setExtractForQuotationId(detailQuotation.id);
+                        setExtractDialogOpen(true);
+                      }}
                     >
-                      <span>
-                        <Upload className="mr-1 h-3.5 w-3.5" />
-                        {uploadingFile ? "Uploading..." : "Upload File"}
-                      </span>
+                      <Sparkles className="mr-1 h-3.5 w-3.5" />
+                      Import Costs from Document
                     </Button>
-                  </label>
+                  </div>
                 </div>
 
                 <Separator />
@@ -1125,6 +1156,29 @@ export function QuotationsPageContent({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* AI Extraction Dialog                                               */}
+      {/* ----------------------------------------------------------------- */}
+      <ExtractQuotationDialog
+        projectId={projectId}
+        open={extractDialogOpen}
+        onOpenChange={(open) => {
+          setExtractDialogOpen(open);
+          if (!open) setExtractForQuotationId(null);
+        }}
+        existingQuotationId={extractForQuotationId}
+        onQuotationCreated={(quotation) => {
+          setQuotations((prev) => [...prev, quotation]);
+          router.refresh();
+        }}
+        onQuotationUpdated={(quotation) => {
+          setQuotations((prev) =>
+            prev.map((q) => (q.id === quotation.id ? quotation : q))
+          );
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

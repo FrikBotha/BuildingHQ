@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
-import type { Quotation, CreateQuotationInput } from "@/types/quotation";
+import type { Quotation, CreateQuotationInput, QuotationLineItem } from "@/types/quotation";
+import type { ExtractedLineItem } from "@/types/extraction";
 import { readJsonFile, writeJsonFile, getProjectFilePath } from "./store";
 import { SA_VAT_RATE } from "@/lib/currency";
 
@@ -43,7 +44,15 @@ export async function createQuotation(
     totalAmount: input.totalAmount,
     vatAmount,
     totalInclVat: input.totalAmount + vatAmount,
-    lineItems: [],
+    lineItems: (input.lineItems || []).map((item): QuotationLineItem => ({
+      id: uuidv4(),
+      description: item.description,
+      unit: item.unit,
+      quantity: item.quantity,
+      unitRate: item.unitRate,
+      amount: item.amount,
+      bomItemId: null,
+    })),
     files: [],
     notes: input.notes || "",
     receivedDate: now,
@@ -86,4 +95,40 @@ export async function deleteQuotation(projectId: string, quotationId: string): P
   if (filtered.length === quotations.length) return false;
   await saveQuotations(projectId, filtered);
   return true;
+}
+
+export async function addLineItemsToQuotation(
+  projectId: string,
+  quotationId: string,
+  items: ExtractedLineItem[]
+): Promise<Quotation | null> {
+  const quotations = await readQuotations(projectId);
+  const index = quotations.findIndex((q) => q.id === quotationId);
+  if (index === -1) return null;
+
+  const newLineItems: QuotationLineItem[] = items.map((item) => ({
+    id: uuidv4(),
+    description: item.description,
+    unit: item.unit,
+    quantity: item.quantity,
+    unitRate: item.unitRate,
+    amount: item.amount,
+    bomItemId: null,
+  }));
+
+  const allLineItems = [...quotations[index].lineItems, ...newLineItems];
+  const totalAmount = allLineItems.reduce((sum, li) => sum + li.amount, 0);
+  const vatAmount = totalAmount * SA_VAT_RATE;
+
+  quotations[index] = {
+    ...quotations[index],
+    lineItems: allLineItems,
+    totalAmount,
+    vatAmount,
+    totalInclVat: totalAmount + vatAmount,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await saveQuotations(projectId, quotations);
+  return quotations[index];
 }
