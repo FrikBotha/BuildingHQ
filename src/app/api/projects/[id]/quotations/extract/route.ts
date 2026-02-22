@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { EXTRACTION_PROMPT } from "@/lib/extraction-prompt";
 import { parseCSV, parseExcel } from "@/lib/parse-spreadsheet";
+import { getAnthropicApiKey } from "@/data/settings";
 import type { ExtractedQuotationData, ExtractionResponse } from "@/types/extraction";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
@@ -83,13 +84,13 @@ export async function POST(
     }
 
     // PDF and images → Claude AI extraction
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = await getAnthropicApiKey();
     if (!apiKey) {
       return NextResponse.json(
         {
           success: false,
           error:
-            "ANTHROPIC_API_KEY is not configured. Add it to your .env.local file.",
+            "No API key configured. Go to Settings to add your Anthropic API key.",
         },
         { status: 500 }
       );

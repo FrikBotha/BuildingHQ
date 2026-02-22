@@ -1,3 +1,5 @@
+import { SettingsPageContent } from "@/components/settings/settings-page-content";
+
 export default function SettingsPage() {
   return (
     <div className="space-y-6">
@@ -7,9 +9,7 @@ export default function SettingsPage() {
           Application settings and preferences
         </p>
       </div>
-      <div className="rounded-lg border p-8 text-center text-muted-foreground">
-        <p>Application settings will be available in a future update.</p>
-      </div>
+      <SettingsPageContent />
     </div>
   );
 }
